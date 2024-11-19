@@ -33,6 +33,14 @@ class App(ctk.CTk):
         ctk.CTkButton(login_frame, text="Login", command=self.login_action).pack(pady=10)
         ctk.CTkButton(login_frame, text="Register", command=self.register_page).pack(pady=10)
 
+        # "The creators" Button
+        creators_button = ctk.CTkButton(login_frame, text="The creators", 
+                                        width=100, height=20, 
+                                        fg_color="gray", 
+                                        hover_color="darkgray", 
+                                        command=self.show_creators)
+        creators_button.pack(side="bottom", pady=10)
+
     def register_page(self):
         self.clear_frame()
 
@@ -64,6 +72,28 @@ class App(ctk.CTk):
         # Buttons
         ctk.CTkButton(register_frame, text="Register", command=self.register_action).pack(pady=10)
         ctk.CTkButton(register_frame, text="Back", command=self.login_page).pack(pady=10)
+
+    def show_creators(self):
+        # Create a new window for the creators' names
+        creators_window = ctk.CTkToplevel(self)
+        creators_window.title("The Creators")
+        creators_window.geometry("400x300")
+
+        ctk.CTkLabel(creators_window, text="Meet the Creators", font=("Arial", 20)).pack(pady=20)
+
+        # Team names
+        creators = [
+            "Ahmed Osama", 
+            "Muhammed Elsayed", 
+            "Muhammed Eslam", 
+            "Ahmed Fathy", 
+            "Mariem Ehab"
+        ]
+        for name in creators:
+            ctk.CTkLabel(creators_window, text=name, font=("Arial", 16)).pack(pady=5)
+
+        # Close button
+        ctk.CTkButton(creators_window, text="Close", command=creators_window.destroy).pack(pady=20)
 
     def login_action(self):
         print("Logging in...")
