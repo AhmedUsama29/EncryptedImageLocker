@@ -170,6 +170,9 @@ class App(ctk.CTk):
         # Show Photos Button
         ctk.CTkButton(dashboard_frame, text="Show Photos", command=self.show_photos_page).pack(pady=10)
 
+        # Sign Out Button (added at the bottom right)
+        ctk.CTkButton(dashboard_frame, text="Sign Out", command=self.login_page).pack(side="bottom", anchor="se", pady=10)
+
     def upload_photo(self):
         file_path = filedialog.askopenfilename(
             title="Select a Photo",
@@ -216,8 +219,7 @@ class App(ctk.CTk):
         file_extension = os.path.splitext(image_path)[1].lower()
         image_name = os.path.basename(image_path)
         category = "General"
-       # user_id = 1  # معرف المستخدم، هنا نضعه ثابتاً لتجربة الوظيفة
-
+        #
         try:
             query = text('''
                 INSERT INTO Images (Size, Extention, Name, Category, EncryptedText, User_Id)
