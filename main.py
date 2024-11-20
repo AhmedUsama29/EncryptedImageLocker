@@ -199,9 +199,9 @@ class App(ctk.CTk):
         image_data = buffered.getvalue()
 
         # إعداد AES للتشفير
-        key = os.urandom(32)  # مفتاح عشوائي 256 بت
+        Ekey = os.urandom(32)  # مفتاح عشوائي 256 بت
         iv = os.urandom(16)  # قيمة ابتدائية عشوائية
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        cipher = Cipher(algorithms.AES(Ekey), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
 
         # تأكد من أن حجم البيانات يكون مضاعفاً لحجم البلوك
@@ -209,10 +209,10 @@ class App(ctk.CTk):
 
         encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
 
-        return (encrypted_data, key, iv)
+        return (encrypted_data, Ekey, iv)
 
     def insert_encrypted_image_to_db(self, encrypted_image_data, image_path):
-        encrypted_data, key, iv = encrypted_image_data
+        encrypted_data, Ekey, iv = encrypted_image_data
 
         # خصائص الصورة
         file_size = os.path.getsize(image_path)
