@@ -23,6 +23,8 @@ class App(ctk.CTk):
         self.geometry("600x500")
         self.resizable(True, True)
 
+        
+
         # Initialize Login Page
         self.login_page()
 
@@ -102,7 +104,8 @@ class App(ctk.CTk):
         result = connection.execute(query, {"email": email, "password": password}).fetchone()
 
         if result:
-            self.dashboard_page()  # Navigate to Dashboard Page
+            self.user_id = result[0]  # استخدام الفهرس للوصول إلى الـ user_id
+            self.dashboard_page()  # الانتقال إلى صفحة التحكم (Dashboard)
         else:
             ctk.CTkLabel(self, text="Invalid Email or Password", font=("Arial", 20), text_color="red").pack(pady=20)
 
@@ -209,11 +212,11 @@ class App(ctk.CTk):
         encrypted_data, key, iv = encrypted_image_data
 
         # خصائص الصورة
-        file_size = "50"
-        file_extension = "png"
-        image_name = "ImgNy"
+        file_size = os.path.getsize(image_path)
+        file_extension = os.path.splitext(image_path)[1].lower()
+        image_name = os.path.basename(image_path)
         category = "General"
-        user_id = 1  # معرف المستخدم، هنا نضعه ثابتاً لتجربة الوظيفة
+       # user_id = 1  # معرف المستخدم، هنا نضعه ثابتاً لتجربة الوظيفة
 
         try:
             query = text('''
@@ -228,7 +231,7 @@ class App(ctk.CTk):
                     "name": image_name,
                     "category": category,
                     "encrypted_text": encrypted_data,
-                    "user_id": user_id
+                    "user_id": self.user_id
                 })
 
             ctk.CTkLabel(self, text="Image Encrypted and Uploaded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
@@ -249,5 +252,3 @@ class App(ctk.CTk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
-    #.
