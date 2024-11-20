@@ -1,6 +1,11 @@
 import pyodbc
 from sqlalchemy import create_engine, text
 import customtkinter as ctk
+from tkinter import filedialog  # For browsing files
+from PIL import Image  # Import Pillow for image handling
+import base64
+from io import BytesIO
+
 
 # إنشاء الاتصال بقاعدة البيانات
 engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
@@ -85,7 +90,7 @@ class App(ctk.CTk):
         email = self.email_entry.get()
         password = self.password_entry.get()
 
-        query = text('''
+        query = text(''' 
             SELECT * 
             FROM Users
             WHERE Email = :email 
@@ -95,19 +100,24 @@ class App(ctk.CTk):
         result = connection.execute(query, {"email": email, "password": password}).fetchone()
 
         if result:
-            ctk.CTkLabel(self, text="Login Successful!", font=("Arial", 20), text_color="green").pack(pady=20)
+            self.dashboard_page()  # Navigate to Dashboard Page
         else:
             ctk.CTkLabel(self, text="Invalid Email or Password", font=("Arial", 20), text_color="red").pack(pady=20)
 
     def register_action(self):
-        first_name = self.first_name_entry.get()
-        last_name = self.last_name_entry.get()
-        username = self.username_entry.get()
-        email = self.email_register_entry.get()
-        phone = self.phone_entry.get()
-        password = self.password_register_entry.get()
-        confirm_password = self.confirm_password_entry.get()
-        gender = self.gender_entry.get()
+        first_name = self.first_name_entry.get().strip()
+        last_name = self.last_name_entry.get().strip()
+        username = self.username_entry.get().strip()
+        email = self.email_register_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+        password = self.password_register_entry.get().strip()
+        confirm_password = self.confirm_password_entry.get().strip()
+        gender = self.gender_entry.get().strip()
+
+        # Check for required fields
+        if not email or not password or not confirm_password or not username:
+            ctk.CTkLabel(self, text="Required fields cannot be empty!", font=("Arial", 20), text_color="red").pack(pady=20)
+            return
 
         # Check if passwords match
         if password != confirm_password:
@@ -116,7 +126,7 @@ class App(ctk.CTk):
 
         # Insert user into the database
         try:
-            query = text('''
+            query = text(''' 
                 INSERT INTO Users (FName, LName, username, Email, PhoneNum, Password, Gender)
                 VALUES (:first_name, :last_name, :username, :email, :phone, :password, :gender)
             ''')
@@ -133,9 +143,83 @@ class App(ctk.CTk):
                     "gender": gender
                 })
 
+            # Show success message briefly and return to login page
             ctk.CTkLabel(self, text="Registration Successful!", font=("Arial", 20), text_color="green").pack(pady=20)
+            self.after(1500, self.login_page)  # Navigate to login page after 1.5 seconds
+
         except Exception as e:
             ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+
+    def dashboard_page(self):
+        self.clear_frame()
+
+        # Dashboard Frame
+        dashboard_frame = ctk.CTkFrame(self)
+        dashboard_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        ctk.CTkLabel(dashboard_frame, text="Dashboard", font=("Arial", 24)).pack(pady=10)
+
+        # Upload Photo Button
+        ctk.CTkButton(dashboard_frame, text="Upload Photo", command=self.upload_photo).pack(pady=10)
+
+        # Show Photos Button
+        ctk.CTkButton(dashboard_frame, text="Show Photos", command=self.show_photos_page).pack(pady=10)
+
+    def upload_photo(self):
+        file_path = filedialog.askopenfilename(
+            title="Select a Photo",
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
+        )
+        if file_path:
+            # تشفير الصورة إلى نص
+            encoded_image = self.encode_image_to_text(file_path)
+
+            # هنا هنفتح نافذة جديدة لعرض النص المشفر
+            self.show_encoded_image_window(encoded_image)
+
+            ctk.CTkLabel(self, text="Photo Uploaded and Encoded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
+
+    def show_encoded_image_window(self, encoded_image):
+        # إنشاء نافذة جديدة لعرض النص المشفر
+        encoded_image_window = ctk.CTkToplevel(self)
+        encoded_image_window.title("Encoded Image")
+        encoded_image_window.geometry("600x400")
+
+        # عرض النص المشفر في النافذة الجديدة
+        encoded_label = ctk.CTkLabel(encoded_image_window, text="Encoded Image (Base64):", font=("Arial", 16))
+        encoded_label.pack(pady=10)
+
+        # عرض النص المشفر في صندوق نصي
+        encoded_text_box = ctk.CTkTextbox(encoded_image_window, height=200, width=500)
+        encoded_text_box.pack(pady=10)
+
+        # تعبئة النص المشفر في الصندوق النصي
+        encoded_text_box.insert("1.0", encoded_image)
+        encoded_text_box.configure(state="disabled")  # جعل النص غير قابل للتعديل
+
+    def encode_image_to_text(self, image_path):
+        # فتح الصورة باستخدام PIL
+        img = Image.open(image_path)
+
+        # تحويل الصورة إلى بايتات
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+
+        # تحويل البايتات إلى نص Base64
+        encoded_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        return encoded_image
+
+    def show_photos_page(self):
+        self.clear_frame()
+
+        # Show Photos Frame
+        photos_frame = ctk.CTkFrame(self)
+        photos_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        ctk.CTkLabel(photos_frame, text="Show Photos Page (Empty)", font=("Arial", 24)).pack(pady=10)
+        ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
+
 
 if __name__ == "__main__":
     app = App()
