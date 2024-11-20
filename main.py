@@ -236,6 +236,24 @@ class App(ctk.CTk):
                     "user_id": self.user_id
                 })
 
+                imgid_query = text('SELECT @@IDENTITY AS imgid')
+                result = connection.execute(imgid_query).fetchone()
+                imgid = result[0] if result else None
+
+                if imgid:
+                    # إدخال imgid و Ekey و iv في جدول EncryptionDetails
+                    insert_encryption_details_query = text('''
+                        INSERT INTO EncryptionDetails (ImgID, Ekey, iv)
+                        VALUES (:imgid, :ekey, :iv)
+                    ''')
+                    connection.execute(insert_encryption_details_query, {
+                        "imgid": imgid,
+                        "ekey": Ekey,
+                        "iv": iv
+                    })
+                else:
+                    raise Exception("Failed to retrieve imgid after inserting image")
+
             ctk.CTkLabel(self, text="Image Encrypted and Uploaded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
         except Exception as e:
             ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
