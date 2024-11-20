@@ -23,6 +23,8 @@ class App(ctk.CTk):
         self.geometry("600x500")
         self.resizable(True, True)
 
+        
+
         # Initialize Login Page
         self.login_page()
 
@@ -212,20 +214,31 @@ class App(ctk.CTk):
     def insert_encrypted_image_to_db(self, encrypted_image_data, image_path):
         encrypted_data, Ekey, iv = encrypted_image_data
 
-        # خصائص الاتصال بالقاعدة
+        # خصائص الصورة
+        file_size = os.path.getsize(image_path)
+        file_extension = os.path.splitext(image_path)[1].lower()
+        image_name = os.path.basename(image_path)
+        category = "General"
+        #
         try:
-            with engine.begin() as connection:
-                # أولاً إدخال الصورة في جدول Images
-                insert_image_query = text('''
-                    INSERT INTO Images (ImagePath)
-                    VALUES (:image_path)
-                ''')
-                connection.execute(insert_image_query, {"image_path": image_path})
+            query = text('''
+                INSERT INTO Images (Size, Extention, Name, Category, EncryptedText, User_Id)
+                VALUES (:size, :ext, :name, :category, :encrypted_text, :user_id)
+            ''')
 
-                # الحصول على imgid الذي تم إدخاله للتو في جدول Images
+            with engine.begin() as connection:
+                connection.execute(query, {
+                    "size": file_size,
+                    "ext": file_extension,
+                    "name": image_name,
+                    "category": category,
+                    "encrypted_text": encrypted_data,
+                    "user_id": self.user_id
+                })
+
                 imgid_query = text('SELECT @@IDENTITY AS imgid')
                 result = connection.execute(imgid_query).fetchone()
-                imgid = result['imgid'] if result else None
+                imgid = result[0] if result else None
 
                 if imgid:
                     # إدخال imgid و Ekey و iv في جدول EncryptionDetails
@@ -241,10 +254,21 @@ class App(ctk.CTk):
                 else:
                     raise Exception("Failed to retrieve imgid after inserting image")
 
+            ctk.CTkLabel(self, text="Image Encrypted and Uploaded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
         except Exception as e:
             ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
 
-# تشغيل التطبيق
+    def show_photos_page(self):
+        self.clear_frame()
+
+        # Frame لعرض الصور
+        photos_frame = ctk.CTkFrame(self)
+        photos_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        ctk.CTkLabel(photos_frame, text="Show Photos Page (Empty)", font=("Arial", 24)).pack(pady=10)
+        ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
+
+
 if __name__ == "__main__":
     app = App()
     app.mainloop()
