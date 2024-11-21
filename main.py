@@ -1,19 +1,20 @@
+import re  # Library for validation patterns
 import pyodbc
 from sqlalchemy import create_engine, text
 import customtkinter as ctk
-from tkinter import filedialog  # For browsing files
+from tkinter import filedialog, messagebox  # For browsing files and pop-up messages
 from PIL import Image  # Import Pillow for image handling
-import base64
 from io import BytesIO
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import os
+import base64
 
-# إنشاء الاتصال بقاعدة البيانات
-engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
+# Creating the connection to the database
+engine = create_engine('mssql+pyodbc://m7md-eslam/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
-ctk.set_appearance_mode("Dark")  # خيارات المظهر
+ctk.set_appearance_mode("Dark")  # Appearance options
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):
@@ -22,8 +23,6 @@ class App(ctk.CTk):
         self.title("Login/Register")
         self.geometry("600x500")
         self.resizable(True, True)
-
-        
 
         # Initialize Login Page
         self.login_page()
@@ -83,12 +82,93 @@ class App(ctk.CTk):
         self.confirm_password_entry = ctk.CTkEntry(register_frame, placeholder_text="Confirm Password", show="*")
         self.confirm_password_entry.pack(pady=5)
 
-        self.gender_entry = ctk.CTkEntry(register_frame, placeholder_text="Gender (M/F)")
+        # Gender OptionMenu for Male/Female selection
+        self.gender_entry = ctk.CTkOptionMenu(register_frame, values=["Male", "Female"])
         self.gender_entry.pack(pady=5)
 
         # Buttons
         ctk.CTkButton(register_frame, text="Register", command=self.register_action).pack(pady=10)
         ctk.CTkButton(register_frame, text="Back", command=self.login_page).pack(pady=10)
+
+    def validate_password(self, password):
+        # Ensure the password meets the required pattern
+        pattern = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%?&])[A-Za-z\d@$!%?&]{8,}$"
+        return bool(re.match(pattern, password))
+
+    def validate_phone_number(self, phone):
+        # Check if the phone number contains exactly 11 digits and starts with '01'
+        return phone.isdigit() and len(phone) == 11 and phone.startswith("01")
+
+    def validate_email(self, email):
+        # Ensure email contains '@' and ends with '.com'
+        return bool(re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com)$", email))
+
+    def register_action(self):
+        first_name = self.first_name_entry.get().strip()
+        last_name = self.last_name_entry.get().strip()
+        username = self.username_entry.get().strip()
+        email = self.email_register_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+        password = self.password_register_entry.get().strip()
+        confirm_password = self.confirm_password_entry.get().strip()
+        gender = self.gender_entry.get()  # Get the selected gender
+
+        # Collect errors
+        errors = []
+
+        # Check required fields
+        if not email:
+            errors.append("Email is required.")
+        elif not self.validate_email(email):
+            errors.append("-Invalid email format (must contain '@' and end with '.com').")
+
+        if not phone:
+            errors.append("Phone number is required.")
+        elif not self.validate_phone_number(phone):
+            errors.append("-Phone number must be exactly 11 digits and start with '01'.")
+
+        if not username:
+            errors.append("Username is required.")
+
+        if not password:
+            errors.append("Password is required.")
+        elif not self.validate_password(password):
+            errors.append("-Password must contain at least 8 characters, including uppercase, lowercase, digit, and special character.")
+
+        if not confirm_password:
+            errors.append("Confirm Password is required.")
+        elif password != confirm_password:
+            errors.append("-Passwords do not match.")
+
+        # Display all errors, if any
+        if errors:
+            error_message = "\n".join(errors)
+            messagebox.showerror("Registration Error", error_message)
+            return
+
+        # If no errors, proceed with registration
+        try:
+            query = text(''' 
+                INSERT INTO Users (FName, LName, username, Email, PhoneNum, Password, Gender)
+                VALUES (:first_name, :last_name, :username, :email, :phone, :password, :gender)
+            ''')
+
+            with engine.begin() as connection:
+                connection.execute(query, {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "username": username,
+                    "email": email,
+                    "phone": phone,
+                    "password": password,
+                    "gender": gender
+                })
+
+            messagebox.showinfo("Registration Successful", "You have been registered successfully!")
+            self.after(1500, self.login_page)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
     def login_action(self):
         email = self.email_entry.get()
@@ -104,73 +184,21 @@ class App(ctk.CTk):
         result = connection.execute(query, {"email": email, "password": password}).fetchone()
 
         if result:
-            self.user_id = result[0]  # استخدام الفهرس للوصول إلى الـ user_id
-            self.dashboard_page()  # الانتقال إلى صفحة التحكم (Dashboard)
+            self.user_id = result[0]  # Retrieve user_id
+            self.dashboard_page()  # Navigate to dashboard
         else:
-            ctk.CTkLabel(self, text="Invalid Email or Password", font=("Arial", 20), text_color="red").pack(pady=20)
-
-    def register_action(self):
-        first_name = self.first_name_entry.get().strip()
-        last_name = self.last_name_entry.get().strip()
-        username = self.username_entry.get().strip()
-        email = self.email_register_entry.get().strip()
-        phone = self.phone_entry.get().strip()
-        password = self.password_register_entry.get().strip()
-        confirm_password = self.confirm_password_entry.get().strip()
-        gender = self.gender_entry.get().strip()
-
-        # Check for required fields
-        if not email or not password or not confirm_password or not username:
-            ctk.CTkLabel(self, text="Required fields cannot be empty!", font=("Arial", 20), text_color="red").pack(pady=20)
-            return
-
-        # Check if passwords match
-        if password != confirm_password:
-            ctk.CTkLabel(self, text="Passwords do not match!", font=("Arial", 20), text_color="red").pack(pady=20)
-            return
-
-        # Insert user into the database
-        try:
-            query = text(''' 
-                INSERT INTO Users (FName, LName, username, Email, PhoneNum, Password, Gender)
-                VALUES (:first_name, :last_name, :username, :email, :phone, :password, :gender)
-            ''')
-
-            # Using a transaction with commit
-            with engine.begin() as connection:  # Use a transactional connection
-                connection.execute(query, {
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "username": username,
-                    "email": email,
-                    "phone": phone,
-                    "password": password,
-                    "gender": gender
-                })
-
-            # Show success message briefly and return to login page
-            ctk.CTkLabel(self, text="Registration Successful!", font=("Arial", 20), text_color="green").pack(pady=20)
-            self.after(1500, self.login_page)  # Navigate to login page after 1.5 seconds
-
-        except Exception as e:
-            ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+            messagebox.showerror("Login Error", "Invalid Email or Password")
 
     def dashboard_page(self):
         self.clear_frame()
 
-        # Dashboard Frame
         dashboard_frame = ctk.CTkFrame(self)
         dashboard_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
         ctk.CTkLabel(dashboard_frame, text="Dashboard", font=("Arial", 24)).pack(pady=10)
 
-        # Upload Photo Button
         ctk.CTkButton(dashboard_frame, text="Upload Photo", command=self.upload_photo).pack(pady=10)
-
-        # Show Photos Button
         ctk.CTkButton(dashboard_frame, text="Show Photos", command=self.show_photos_page).pack(pady=10)
-
-        # Sign Out Button (added at the bottom right)
         ctk.CTkButton(dashboard_frame, text="Sign Out", command=self.login_page).pack(side="bottom", anchor="se", pady=10)
 
     def upload_photo(self):
@@ -179,84 +207,40 @@ class App(ctk.CTk):
             filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
         )
         if file_path:
-            # تشفير الصورة باستخدام AES
             encrypted_image_data = self.encrypt_image(file_path)
-
-            # إدخال الصورة المشفرة إلى قاعدة البيانات
             self.insert_encrypted_image_to_db(encrypted_image_data, file_path)
-
-            ctk.CTkLabel(self, text="Photo Uploaded and Encrypted Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
+            messagebox.showinfo("Upload Successful", "Photo Uploaded and Encrypted Successfully!")
 
     def encrypt_image(self, image_path):
-        # فتح الصورة باستخدام PIL
         img = Image.open(image_path)
-
-        # تحويل الصورة إلى بايتات
         buffered = BytesIO()
         img.save(buffered, format="PNG")
-
-        # تحويل البايتات إلى نص Base64 (اختياري لكن سأتركه فقط لإظهار كيفية تحويل الصورة)
         image_data = buffered.getvalue()
 
-        # إعداد AES للتشفير
-        Ekey = os.urandom(32)  # مفتاح عشوائي 256 بت
-        iv = os.urandom(16)  # قيمة ابتدائية عشوائية
+        Ekey = os.urandom(32)
+        iv = os.urandom(16)
         cipher = Cipher(algorithms.AES(Ekey), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
 
-        # تأكد من أن حجم البيانات يكون مضاعفاً لحجم البلوك
-        padded_data = image_data + b"\0" * (16 - len(image_data) % 16)
+        padded_image_data = image_data + b" " * (16 - len(image_data) % 16)
+        encrypted_data = encryptor.update(padded_image_data) + encryptor.finalize()
+        return encrypted_data
 
-        encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
-
-        return (encrypted_data, Ekey, iv)
-
-    def insert_encrypted_image_to_db(self, encrypted_image_data, image_path):
-        encrypted_data, Ekey, iv = encrypted_image_data
-
-        # خصائص الصورة
-        file_size = os.path.getsize(image_path)
-        file_extension = os.path.splitext(image_path)[1].lower()
+    def insert_encrypted_image_to_db(self, encrypted_data, image_path):
+        encoded_image_data = base64.b64encode(encrypted_data).decode("utf-8")
         image_name = os.path.basename(image_path)
-        category = "General"
-        #
-        try:
-            query = text('''
-                INSERT INTO Images (Size, Extention, Name, Category, EncryptedText, User_Id)
-                VALUES (:size, :ext, :name, :category, :encrypted_text, :user_id)
-            ''')
 
-            with engine.begin() as connection:
-                connection.execute(query, {
-                    "size": file_size,
-                    "ext": file_extension,
-                    "name": image_name,
-                    "category": category,
-                    "encrypted_text": encrypted_data,
-                    "user_id": self.user_id
-                })
+        query = text('''
+            INSERT INTO Images (ImageData, ImageName, UserID) 
+            VALUES (:image_data, :image_name, :user_id)
+        ''')
 
-                imgid_query = text('SELECT @@IDENTITY AS imgid')
-                result = connection.execute(imgid_query).fetchone()
-                imgid = result[0] if result else None
-
-                if imgid:
-                    # إدخال imgid و Ekey و iv في جدول EncryptionDetails
-                    insert_encryption_details_query = text('''
-                        INSERT INTO EncryptionDetails (ImgID, Ekey, iv)
-                        VALUES (:imgid, :ekey, :iv)
-                    ''')
-                    connection.execute(insert_encryption_details_query, {
-                        "imgid": imgid,
-                        "ekey": Ekey,
-                        "iv": iv
-                    })
-                else:
-                    raise Exception("Failed to retrieve imgid after inserting image")
-
-            ctk.CTkLabel(self, text="Image Encrypted and Uploaded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
-        except Exception as e:
-            ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+        with engine.begin() as connection:
+            connection.execute(query, {
+                "image_data": encoded_image_data,
+                "image_name": image_name,
+                "user_id": self.user_id  # Use the logged-in user's ID
+            })
 
     def show_photos_page(self):
         self.clear_frame()
@@ -267,7 +251,7 @@ class App(ctk.CTk):
 
         ctk.CTkLabel(photos_frame, text="Show Photos Page (Empty)", font=("Arial", 24)).pack(pady=10)
         ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
-
+        pass
 
 if __name__ == "__main__":
     app = App()
