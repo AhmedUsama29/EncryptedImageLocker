@@ -52,6 +52,20 @@ class App(ctk.CTk):
         ctk.CTkButton(login_frame, text="Login", command=self.login_action).pack(pady=10)
         ctk.CTkButton(login_frame, text="Register", command=self.register_page).pack(pady=10)
 
+    def encrypt_password(self, password):
+        # إعداد AES للتشفير
+        Pkey = os.urandom(32)  # مفتاح عشوائي 256 بت
+        Piv = os.urandom(16)  # قيمة ابتدائية عشوائية
+        cipher = Cipher(algorithms.AES(Pkey), modes.CBC(Piv), backend=default_backend())
+        Pencryptor = cipher.encryptor()
+
+        # تأكد من أن حجم البيانات يكون مضاعفاً لحجم البلوك
+        Ppadded_data = password + b"\0" * (16 - len(password) % 16)
+
+        Pencrypted_data = Pencryptor.update(Ppadded_data) + Pencryptor.finalize()
+
+        return (Pencrypted_data, Pkey, Piv)
+
     def register_page(self):
         self.clear_frame()
 
@@ -129,28 +143,48 @@ class App(ctk.CTk):
             ctk.CTkLabel(self, text="Passwords do not match!", font=("Arial", 20), text_color="red").pack(pady=20)
             return
 
+        encrypted_password, Pkey, PIV = self.encrypt_password(password.encode())
+
         # Insert user into the database
         try:
             query = text(''' 
                 INSERT INTO Users (FName, LName, username, Email, PhoneNum, Password, Gender)
+                OUTPUT INSERTED.user_id
                 VALUES (:first_name, :last_name, :username, :email, :phone, :password, :gender)
             ''')
 
-            # Using a transaction with commit
-            with engine.begin() as connection:  # Use a transactional connection
-                connection.execute(query, {
+            with engine.begin() as connection:
+                result = connection.execute(query, {
                     "first_name": first_name,
                     "last_name": last_name,
                     "username": username,
                     "email": email,
                     "phone": phone,
-                    "password": password,
+                    "password": encrypted_password,
                     "gender": gender
-                })
+                }).fetchone()
 
-            # Show success message briefly and return to login page
-            ctk.CTkLabel(self, text="Registration Successful!", font=("Arial", 20), text_color="green").pack(pady=20)
-            self.after(1500, self.login_page)  # Navigate to login page after 1.5 seconds
+                self.user_id = result[0] if result else None
+
+            if self.user_id:
+                # Insert encryption details for the password
+                query = text(''' 
+                    INSERT INTO PasswordEncryption (user_id, Pkey, PIV)
+                    VALUES (:user_id, :Pkey, :PIV)
+                ''')
+
+                with engine.begin() as connection:
+                    connection.execute(query, {
+                        "user_id": self.user_id,
+                        "Pkey": Pkey,
+                        "PIV": PIV
+                    })
+
+                # Show success message
+                ctk.CTkLabel(self, text="Registration Successful!", font=("Arial", 20), text_color="green").pack(pady=20)
+                self.after(1500, self.login_page)  # Navigate to login page after 1.5 seconds
+            else:
+                raise Exception("Failed to retrieve user_id.")
 
         except Exception as e:
             ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
