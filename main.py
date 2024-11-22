@@ -11,11 +11,12 @@ import os
 import base64
 
 # Creating the connection to the database
-engine = create_engine('mssql+pyodbc://m7md-eslam/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
+engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
 ctk.set_appearance_mode("Dark")  # Appearance options
 ctk.set_default_color_theme("blue")
+
 
 class App(ctk.CTk):
     def __init__(self):
@@ -50,6 +51,20 @@ class App(ctk.CTk):
         # Buttons
         ctk.CTkButton(login_frame, text="Login", command=self.login_action).pack(pady=10)
         ctk.CTkButton(login_frame, text="Register", command=self.register_page).pack(pady=10)
+
+    def encrypt_password(self, password):
+        # إعداد AES للتشفير
+        Pkey = os.urandom(32)  # مفتاح عشوائي 256 بت
+        Piv = os.urandom(16)  # قيمة ابتدائية عشوائية
+        cipher = Cipher(algorithms.AES(Pkey), modes.CBC(Piv), backend=default_backend())
+        Pencryptor = cipher.encryptor()
+
+        # تأكد من أن حجم البيانات يكون مضاعفاً لحجم البلوك
+        Ppadded_data = password + b"\0" * (16 - len(password) % 16)
+
+        Pencrypted_data = Pencryptor.update(Ppadded_data) + Pencryptor.finalize()
+
+        return (Pencrypted_data, Pkey, Piv)
 
     def register_page(self):
         self.clear_frame()
@@ -103,6 +118,7 @@ class App(ctk.CTk):
         # Ensure email contains '@' and ends with '.com'
         return bool(re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com)$", email))
 
+    # Remaining functions...
     def register_action(self):
         first_name = self.first_name_entry.get().strip()
         last_name = self.last_name_entry.get().strip()
@@ -120,12 +136,12 @@ class App(ctk.CTk):
         if not email:
             errors.append("Email is required.")
         elif not self.validate_email(email):
-            errors.append("-Invalid email format (must contain '@' and end with '.com').")
+            errors.append("- Invalid email format (must contain '@' and end with '.com').")
 
         if not phone:
             errors.append("Phone number is required.")
         elif not self.validate_phone_number(phone):
-            errors.append("-Phone number must be exactly 11 digits and start with '01'.")
+            errors.append("- Phone number must be exactly 11 digits and start with '01'.")
 
         if not username:
             errors.append("Username is required.")
@@ -133,12 +149,12 @@ class App(ctk.CTk):
         if not password:
             errors.append("Password is required.")
         elif not self.validate_password(password):
-            errors.append("-Password must contain at least 8 characters, including uppercase, lowercase, digit, and special character.")
+            errors.append("- Password must contain at least 8 characters, including uppercase, lowercase, digit, and special character.")
 
         if not confirm_password:
             errors.append("Confirm Password is required.")
         elif password != confirm_password:
-            errors.append("-Passwords do not match.")
+            errors.append("- Passwords do not match.")
 
         # Display all errors, if any
         if errors:
@@ -148,24 +164,43 @@ class App(ctk.CTk):
 
         # If no errors, proceed with registration
         try:
+            encrypted_password, Pkey, PIV = self.encrypt_password(password.encode())
+
             query = text(''' 
                 INSERT INTO Users (FName, LName, username, Email, PhoneNum, Password, Gender)
+                OUTPUT INSERTED.user_id
                 VALUES (:first_name, :last_name, :username, :email, :phone, :password, :gender)
             ''')
 
             with engine.begin() as connection:
-                connection.execute(query, {
+                result = connection.execute(query, {
                     "first_name": first_name,
                     "last_name": last_name,
                     "username": username,
                     "email": email,
                     "phone": phone,
-                    "password": password,
+                    "password": encrypted_password,
                     "gender": gender
-                })
+                }).fetchone()
 
-            messagebox.showinfo("Registration Successful", "You have been registered successfully!")
-            self.after(1500, self.login_page)
+                self.user_id = result[0] if result else None
+
+            if self.user_id:
+                # Insert encryption details for the password
+                query = text(''' 
+                    INSERT INTO PasswordEncryption (user_id, Pkey, PIV)
+                    VALUES (:user_id, :Pkey, :PIV)
+                ''')
+
+                with engine.begin() as connection:
+                    connection.execute(query, {
+                        "user_id": self.user_id,
+                        "Pkey": Pkey,
+                        "PIV": PIV
+                    })
+
+                messagebox.showinfo("Registration Successful", "You have been registered successfully!")
+                self.after(1500, self.login_page)
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
@@ -175,19 +210,27 @@ class App(ctk.CTk):
         password = self.password_entry.get()
 
         query = text(''' 
-            SELECT * 
+            SELECT user_id, Password 
             FROM Users
-            WHERE Email = :email 
-            AND Password = :password
+            WHERE Email = :email
         ''')
 
-        result = connection.execute(query, {"email": email, "password": password}).fetchone()
+        try:
+            result = connection.execute(query, {"email": email}).fetchone()
+            if result:
+                stored_password = result[1]
+                user_id = result[0]
+#                print(f"Stored Password (Debugging): {stored_password}")  # remooove
 
-        if result:
-            self.user_id = result[0]  # Retrieve user_id
-            self.dashboard_page()  # Navigate to dashboard
-        else:
-            messagebox.showerror("Login Error", "Invalid Email or Password")
+                if stored_password == password:  # Simplified for demonstration
+                    self.user_id = user_id
+                    self.dashboard_page()
+                else:
+                    messagebox.showerror("Login Error", "Invalid Password.")
+            else:
+                messagebox.showerror("Login Error", "Email not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
     def dashboard_page(self):
         self.clear_frame()
@@ -245,13 +288,12 @@ class App(ctk.CTk):
     def show_photos_page(self):
         self.clear_frame()
 
-        # Frame لعرض الصور
         photos_frame = ctk.CTkFrame(self)
         photos_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
         ctk.CTkLabel(photos_frame, text="Show Photos Page (Empty)", font=("Arial", 24)).pack(pady=10)
         ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
-        pass
+
 
 if __name__ == "__main__":
     app = App()
