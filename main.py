@@ -7,7 +7,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from sqlalchemy import create_engine, text
 import pyodbc
-from PIL import Image
+from PIL import Image , ImageTk
 from io import BytesIO
 
 # Database connection setup
@@ -276,7 +276,6 @@ class App(ctk.CTk):
 
             # إدخال الصورة المشفرة إلى قاعدة البيانات
             self.insert_encrypted_image_to_db(encrypted_image_data, file_path)
-
             ctk.CTkLabel(self, text="Photo Uploaded and Encrypted Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
 
     def encrypt_image(self, image_path):
@@ -350,15 +349,122 @@ class App(ctk.CTk):
         except Exception as e:
             ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
 
+    def decrypt_image(self, encrypted_data, ekey, iv):
+    # إعداد التشفير لفك البيانات
+        cipher = Cipher(algorithms.AES(ekey), modes.CBC(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+
+    # فك التشفير
+        decrypted_data = decryptor.update(encrypted_data) + decryptor.finalize()
+
+    # إزالة البادئة إذا كانت مضافة
+        decrypted_data = decrypted_data.rstrip(b"\0")
+
+        return decrypted_data
+
+    
     def show_photos_page(self):
         self.clear_frame()
 
-        # Frame لعرض الصور
         photos_frame = ctk.CTkFrame(self)
         photos_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        ctk.CTkLabel(photos_frame, text="Show Photos Page (Empty)", font=("Arial", 24)).pack(pady=10)
+        ctk.CTkLabel(photos_frame, text="Photo Gallery", font=("Arial", 24)).pack(pady=10)
+
+        try:
+            query = text('''
+            SELECT i.ImgID, i.EncryptedText, i.Name, i.Size, i.Extention, ed.Ekey, ed.iv
+            FROM Images i
+            JOIN EncryptionDetails ed ON i.imgid = ed.ImgID
+            WHERE i.User_Id = :user_id
+            ''')
+
+            with engine.connect() as connection:
+                results = connection.execute(query, {"user_id": self.user_id}).fetchall()
+
+            if not results:
+                ctk.CTkLabel(photos_frame, text="No Photos Available", font=("Arial", 18), text_color="red").pack(pady=20)
+                return
+
+        # Create a grid for photos
+            grid_frame = ctk.CTkFrame(photos_frame)
+            grid_frame.pack(fill="both", expand=True)
+
+        # Number of columns in the grid
+            columns = 3
+            row = 0
+            col = 0
+
+            for result in results:
+                img_id, encrypted_text, img_name, img_size, img_extension, ekey, iv = result
+
+            # Decrypt the image
+                decrypted_image = self.decrypt_image(encrypted_text, ekey, iv)
+
+            # Convert data to an image
+                image = Image.open(BytesIO(decrypted_image))
+                image.thumbnail((150, 150))  # Resize the image
+                photo = ImageTk.PhotoImage(image)
+
+            # Create a frame for each image
+                img_frame = ctk.CTkFrame(grid_frame, width=150, height=200, corner_radius=10)
+                img_frame.grid(row=row, column=col, padx=10, pady=10)
+
+            # Display the image
+                label = ctk.CTkLabel(img_frame, image=photo, text="")
+                label.photo = photo  # Keep reference
+                label.pack(pady=5)
+
+            # Download button
+                download_btn = ctk.CTkButton(img_frame, text="⬇", width=50, command=lambda i=img_id: self.download_image(i))
+                download_btn.pack(side="left", padx=5)
+
+            # Info button
+                info_btn = ctk.CTkButton(img_frame, text="ℹ", width=50, command=lambda n=img_name, s=img_size, e=img_extension: self.show_image_info(n, s, e))
+                info_btn.pack(side="right", padx=5)
+
+            # Update row and column for the next image
+                col += 1
+                if col >= columns:
+                    col = 0
+                    row += 1
+
+        except Exception as e:
+            ctk.CTkLabel(photos_frame, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+
         ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
+
+    def download_image(self, img_id):
+        try:
+            query = text('''
+            SELECT i.EncryptedText, ed.Ekey, ed.iv
+            FROM Images i
+            JOIN EncryptionDetails ed ON i.imgid = ed.ImgID
+            WHERE i.ImgID = :img_id
+            ''')
+
+            with engine.connect() as connection:
+                result = connection.execute(query, {"img_id": img_id}).fetchone()
+
+            if result:
+                encrypted_text, ekey, iv = result
+                decrypted_image = self.decrypt_image(encrypted_text, ekey, iv)
+
+                # Save the image to a file
+                save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("Image files", "*.png;*.jpg;*.jpeg")])
+                if save_path:
+                    with open(save_path, "wb") as file:
+                        file.write(decrypted_image)
+                    messagebox.showinfo("Download Successful", "Image downloaded successfully!")
+            else:
+                messagebox.showerror("Error", "Image not found!")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def show_image_info(self, name, size, extension):
+        info_message = f"Name: {name}\nSize: {size} bytes\nExtension: {extension}"
+        messagebox.showinfo("Image Information", info_message)
+
 
 
 if __name__ == "__main__":
