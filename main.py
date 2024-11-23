@@ -3,7 +3,7 @@ import base64
 import re
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import customtkinter as ctk
 from sqlalchemy import create_engine, text
 import pyodbc
@@ -20,7 +20,7 @@ ctk.set_default_color_theme("blue")
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Login/Register")
+        self.title("Image Lock")
         self.geometry("600x500")
         self.resizable(True, True)
 
@@ -40,9 +40,9 @@ class App(ctk.CTk):
 
         ctk.CTkLabel(login_frame, text="Login", font=("Arial", 24)).pack(pady=10)
 
-        # Email and Password fields
-        self.email_entry = ctk.CTkEntry(login_frame, placeholder_text="Email")
-        self.email_entry.pack(pady=10)
+        # Username/Email and Password fields
+        self.email_or_username_entry = ctk.CTkEntry(login_frame, placeholder_text="Email or Username")
+        self.email_or_username_entry.pack(pady=10)
 
         self.password_entry = ctk.CTkEntry(login_frame, placeholder_text="Password", show="*")
         self.password_entry.pack(pady=10)
@@ -223,29 +223,29 @@ class App(ctk.CTk):
             messagebox.showerror("Error", f"An error occurred: {e}")
 
     def login_action(self):
-        email = self.email_entry.get()
-        password = self.password_entry.get()
+        email_or_username = self.email_or_username_entry.get().strip()
+        password = self.password_entry.get().strip()
 
-        query = text(''' 
+        query = text('''
         SELECT Users.User_ID, Users.Password, PasswordEncryption.Pkey, PasswordEncryption.PIV
-        FROM Users 
+        FROM Users
         INNER JOIN PasswordEncryption ON Users.User_ID = PasswordEncryption.user_id
-        WHERE Email = :email
+        WHERE Email = :email_or_username OR username = :email_or_username
         ''')
-
-        result = connection.execute(query, {"email": email}).fetchone()
+        
+        result = connection.execute(query, {"email_or_username": email_or_username}).fetchone()
 
         if result:
             encrypted_password, Pkey_str, Piv_str = result[1], result[2], result[3]
             decrypted_password = self.decrypt_password(encrypted_password, Pkey_str, Piv_str)
 
             if decrypted_password == password:
-                self.user_id = result[0]  # استخدام الفهرس للوصول إلى الـ user_id
-                self.dashboard_page()  # الانتقال إلى صفحة التحكم (Dashboard)
+                self.user_id = result[0]  # Get user_id
+                self.dashboard_page()  # Navigate to Dashboard
             else:
-                messagebox.showerror("Login Failed", "Invalid email or password!")
+                messagebox.showerror("Login Failed", "Invalid email/username or password!")
         else:
-            messagebox.showerror("Login Failed", "Email not found!")
+            messagebox.showerror("Login Failed", "Email/Username not found!")
 
     def dashboard_page(self):
         self.clear_frame()
@@ -276,7 +276,6 @@ class App(ctk.CTk):
 
             # إدخال الصورة المشفرة إلى قاعدة البيانات
             self.insert_encrypted_image_to_db(encrypted_image_data, file_path)
-            ctk.CTkLabel(self, text="Photo Uploaded and Encrypted Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
 
     def encrypt_image(self, image_path):
         # فتح الصورة باستخدام PIL
@@ -305,12 +304,12 @@ class App(ctk.CTk):
     def insert_encrypted_image_to_db(self, encrypted_image_data, image_path):
         encrypted_data, Ekey, iv = encrypted_image_data
 
-        # خصائص الصورة
+    # خصائص الصورة
         file_size = os.path.getsize(image_path)
         file_extension = os.path.splitext(image_path)[1].lower()
         image_name = os.path.basename(image_path)
         category = "General"
-        #
+    #
         try:
             query = text('''
                 INSERT INTO Images (Size, Extention, Name, Category, EncryptedText, User_Id)
@@ -332,7 +331,7 @@ class App(ctk.CTk):
                 imgid = result[0] if result else None
 
                 if imgid:
-                    # إدخال imgid و Ekey و iv في جدول EncryptionDetails
+                # إدخال imgid و Ekey و iv في جدول EncryptionDetails
                     insert_encryption_details_query = text('''
                         INSERT INTO EncryptionDetails (ImgID, Ekey, iv)
                         VALUES (:imgid, :ekey, :iv)
@@ -345,9 +344,11 @@ class App(ctk.CTk):
                 else:
                     raise Exception("Failed to retrieve imgid after inserting image")
 
-            ctk.CTkLabel(self, text="Image Encrypted and Uploaded Successfully!", font=("Arial", 18), text_color="green").pack(pady=20)
+        # عرض رسالة النجاح كـ pop-up
+            messagebox.showinfo("Success", "Image Uploaded Successfully!")
         except Exception as e:
-            ctk.CTkLabel(self, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+        # عرض رسالة الخطأ كـ pop-up
+            messagebox.showerror("Error", f"Error: {e}")
 
     def decrypt_image(self, encrypted_data, ekey, iv):
     # إعداد التشفير لفك البيانات
@@ -362,16 +363,36 @@ class App(ctk.CTk):
 
         return decrypted_data
 
-    
     def show_photos_page(self):
         self.clear_frame()
 
-        photos_frame = ctk.CTkFrame(self)
-        photos_frame.pack(pady=20, padx=20, fill="both", expand=True)
+    # إعداد إطار رئيسي يشمل الصور وزر Back والعنوان
+        container = ctk.CTkFrame(self)
+        container.pack(fill="both", expand=True, padx=20, pady=20)  # توسيع الإطار لملء النافذة
 
-        ctk.CTkLabel(photos_frame, text="Photo Gallery", font=("Arial", 24)).pack(pady=10)
+    # Canvas لإضافة التمرير
+        canvas = ctk.CTkCanvas(container, highlightthickness=0)
+        canvas.pack(side="left", fill='both', expand=True, padx=20, pady=20)  # توسيع canvas لملء الإطار
+
+    # Scrollbar عمودي
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+
+        photos_frame = ctk.CTkFrame(canvas)
+        photos_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=photos_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+    # عنوان الصفحة
+        title = ctk.CTkLabel(photos_frame, text="Photo Gallery", font=("Arial", 24))
+        title.grid(row=0, column=0, padx=20, pady=10)
 
         try:
+        # جلب الصور من قاعدة البيانات
             query = text('''
             SELECT i.ImgID, i.EncryptedText, i.Name, i.Size, i.Extention, ed.Ekey, ed.iv
             FROM Images i
@@ -383,57 +404,72 @@ class App(ctk.CTk):
                 results = connection.execute(query, {"user_id": self.user_id}).fetchall()
 
             if not results:
-                ctk.CTkLabel(photos_frame, text="No Photos Available", font=("Arial", 18), text_color="red").pack(pady=20)
-                ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
+                ctk.CTkLabel(photos_frame, text="No Photos Available", font=("Arial", 18), text_color="red").grid(row=1, column=0, pady=20)
+                ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).grid(row=2, column=0, pady=10)
                 return
 
-        # Create a grid for photos
-            grid_frame = ctk.CTkFrame(photos_frame)
-            grid_frame.pack(fill="both", expand=True)
+        # تحديد عدد الأعمدة بناءً على عرض النافذة
+            container_width = container.winfo_width()
+            image_width = 210  # عرض الصورة مع الهامش
+            columns = max(8, container_width // image_width)  # تحديد عدد الأعمدة بناءً على عرض الإطار
 
-        # Number of columns in the grid
-            columns = 3
-            row = 0
+            row = 1
             col = 0
 
             for result in results:
                 img_id, encrypted_text, img_name, img_size, img_extension, ekey, iv = result
 
-            # Decrypt the image
+            # فك تشفير الصورة
                 decrypted_image = self.decrypt_image(encrypted_text, ekey, iv)
 
-            # Convert data to an image
+            # تحويل البيانات إلى صورة
                 image = Image.open(BytesIO(decrypted_image))
-                image.thumbnail((150, 150))  # Resize the image
+                image.thumbnail((200, 200))  # ضبط حجم الصور
                 photo = ImageTk.PhotoImage(image)
 
-            # Create a frame for each image
-                img_frame = ctk.CTkFrame(grid_frame, width=150, height=200, corner_radius=10)
-                img_frame.grid(row=row, column=col, padx=10, pady=10)
+            # إطار خاص لكل صورة
+                img_frame = ctk.CTkFrame(photos_frame, width=200, height=250, corner_radius=10)
+                img_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")  # التأكد من توزيع المساحة بشكل صحيح
 
-            # Display the image
+            # عرض الصورة
                 label = ctk.CTkLabel(img_frame, image=photo, text="")
-                label.photo = photo  # Keep reference
+                label.photo = photo  # الاحتفاظ بالمراجع
                 label.pack(pady=5)
 
-            # Download button
-                download_btn = ctk.CTkButton(img_frame, text="⬇", width=50, command=lambda i=img_id: self.download_image(i))
+            # زر التنزيل
+                download_btn = ctk.CTkButton(
+                    img_frame, text="⬇", width=50, 
+                    command=lambda i=img_id: self.download_image(i)
+                )
                 download_btn.pack(side="left", padx=5)
 
-            # Info button
-                info_btn = ctk.CTkButton(img_frame, text="ℹ", width=50, command=lambda n=img_name, s=img_size, e=img_extension: self.show_image_info(n, s, e))
+            # زر المعلومات
+                info_btn = ctk.CTkButton(
+                    img_frame, text="ℹ", width=50, 
+                    command=lambda n=img_name, s=img_size, e=img_extension: self.show_image_info(n, s, e)
+                )
                 info_btn.pack(side="right", padx=5)
 
-            # Update row and column for the next image
+            # تحديث الصفوف والأعمدة
                 col += 1
                 if col >= columns:
-                    col = 0
-                    row += 1
+                    col = 0  # عندما نصل إلى 8 أعمدة، نبدأ صفًا جديدًا
+                    row += 1  # الانتقال إلى الصف التالي
+
+        # تحديد توزيع المساحة
+            for i in range(columns):
+                photos_frame.grid_columnconfigure(i, weight=1)  # التأكد من توزيع الأعمدة بشكل متساوي
 
         except Exception as e:
-            ctk.CTkLabel(photos_frame, text=f"Error: {e}", font=("Arial", 20), text_color="red").pack(pady=20)
+            ctk.CTkLabel(photos_frame, text=f"Error: {e}", font=("Arial", 20), text_color="red").grid(row=1, column=0, pady=20)
 
-        ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
+    # زر العودة إلى الصفحة الرئيسية
+        back_button = ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page)
+        back_button.grid(row=row + 1, column=0, pady=10)
+
+    # التأكد من أن كل شيء متناسق مع التمرير
+        container.update()
+
 
     def download_image(self, img_id):
         try:
