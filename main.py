@@ -384,6 +384,7 @@ class App(ctk.CTk):
 
             if not results:
                 ctk.CTkLabel(photos_frame, text="No Photos Available", font=("Arial", 18), text_color="red").pack(pady=20)
+                ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).pack(pady=10)
                 return
 
         # Create a grid for photos
