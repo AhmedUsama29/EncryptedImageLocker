@@ -14,7 +14,7 @@ from io import BytesIO
 engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
-ctk.set_appearance_mode("Dark")  # Appearance options
+ctk.set_appearance_mode("Light")  # Appearance options
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):
@@ -362,6 +362,32 @@ class App(ctk.CTk):
         decrypted_data = decrypted_data.rstrip(b"\0")
 
         return decrypted_data
+    
+    def delete_image(self, img_id, img_frame):
+        try:
+            delete_image_query = text('''
+                DELETE FROM Images WHERE ImgID = :img_id
+            ''')
+
+            with engine.connect() as connection:
+                with connection.begin() as transaction:
+                    result = connection.execute(delete_image_query, {"img_id": img_id})
+
+                # تحقق من عدد الصفوف المتأثرة
+                    if result.rowcount == 0:
+                        messagebox.showerror("Error", "Image not found")
+                    else:
+                    # إزالة الصورة من الواجهة وإعادة تحميل البيانات
+                        img_frame.destroy()
+                    # ... (أضف هنا الكود الخاص بك لإعادة تحميل البيانات)
+                        messagebox.showinfo("Success", "Image deleted successfully!")
+
+                    transaction.commit()
+        except Exception as e:
+            print(f"Error occurred: {e}")
+        messagebox.showerror("Error", f"An error occurred: {e}")
+
+
 
     def show_photos_page(self):
         self.clear_frame()
@@ -411,7 +437,7 @@ class App(ctk.CTk):
         # تحديد عدد الأعمدة بناءً على عرض النافذة
             container_width = container.winfo_width()
             image_width = 210  # عرض الصورة مع الهامش
-            columns = max(8, container_width // image_width)  # تحديد عدد الأعمدة بناءً على عرض الإطار
+            columns = max(7, container_width // image_width)  # تحديد عدد الأعمدة بناءً على عرض الإطار
 
             row = 1
             col = 0
@@ -449,6 +475,14 @@ class App(ctk.CTk):
                     command=lambda n=img_name, s=img_size, e=img_extension: self.show_image_info(n, s, e)
                 )
                 info_btn.pack(side="right", padx=5)
+
+            # زر الحذف
+                delete_btn = ctk.CTkButton(
+                    img_frame, text="❌", width=50, 
+                    command=lambda i=img_id, f=img_frame: self.delete_image(i, f)
+                )
+                delete_btn.pack(side="bottom", padx=5)
+
 
             # تحديث الصفوف والأعمدة
                 col += 1
@@ -502,6 +536,7 @@ class App(ctk.CTk):
         info_message = f"Name: {name}\nSize: {size} bytes\nExtension: {extension}"
         messagebox.showinfo("Image Information", info_message)
 
+    
 
 
 if __name__ == "__main__":
