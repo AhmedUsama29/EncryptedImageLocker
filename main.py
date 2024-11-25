@@ -478,6 +478,11 @@ class App(ctk.CTk):
                 label.photo = photo  # الاحتفاظ بالمراجع
                 label.pack(pady=5)
 
+                # زر التحديث
+                refresh_button = ctk.CTkButton(self, text="🔄 Refresh", command=self.show_photos_page)
+                refresh_button.place(relx=1.0, rely=1.0, anchor="se")  # موقع ثابت في أسفل اليمين
+
+
             # زر التنزيل
                 download_btn = ctk.CTkButton(
                     img_frame, text="⬇", width=50, 
