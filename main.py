@@ -14,7 +14,7 @@ from io import BytesIO
 engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
-ctk.set_appearance_mode("Light")  # Appearance options
+ctk.set_appearance_mode("Dark")  # Appearance options
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):
@@ -27,9 +27,16 @@ class App(ctk.CTk):
         # Initialize Login Page
         self.login_page()
 
+        # Add icon for toggling light/dark mode
+        self.icon_label = ctk.CTkLabel(self, text="🌙", font=("Arial", 18), cursor="hand2")
+        self.icon_label.place(relx=1.0, rely=0.05, anchor="ne")  # Relative positioning to keep it at the top-right
+        self.icon_label.bind("<Button-1>", self.toggle_mode)  # Bind click event
+
+
     def clear_frame(self):
         for widget in self.winfo_children():
-            widget.destroy()
+            if widget != self.icon_label:  # Keep the icon_label
+                widget.destroy()
 
     def login_page(self):
         self.clear_frame()
@@ -50,6 +57,15 @@ class App(ctk.CTk):
         # Buttons
         ctk.CTkButton(login_frame, text="Login", command=self.login_action).pack(pady=10)
         ctk.CTkButton(login_frame, text="Register", command=self.register_page).pack(pady=10)
+
+    def toggle_mode(self, event):
+        current_mode = ctk.get_appearance_mode()
+        if current_mode == "Light":
+            ctk.set_appearance_mode("Dark")
+            self.icon_label.configure(text="🌙")  # Change icon to sun for dark mode
+        else:
+            ctk.set_appearance_mode("Light")
+            self.icon_label.configure(text="🌞")  # Change icon to moon for light mode
 
     def encrypt_password(self, password):
         # AES encryption setup
