@@ -11,34 +11,38 @@ from PIL import Image , ImageTk
 from io import BytesIO
 
 # Database connection setup
-engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
+engine = create_engine('mssql+pyodbc://AHMED-FATHY-LAP/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
+# Set default appearance mode and theme for the application
 ctk.set_appearance_mode("Dark")  # Appearance options
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Image Locker")
-        self.geometry("600x500")
-        self.resizable(True, True)
+        self.title("Image Locker")  # Set window title
+        self.geometry("600x500")   # Set window size
+        self.resizable(True, True)  # Allow resizing of the window
 
         # Initialize Login Page
         self.login_page()
 
         # Add icon for toggling light/dark mode
-        self.icon_label = ctk.CTkLabel(self, text="🌙", font=("Arial", 18), cursor="hand2")
-        self.icon_label.place(relx=1.0, rely=0.05, anchor="ne")  # Relative positioning to keep it at the top-right
-        self.icon_label.bind("<Button-1>", self.toggle_mode)  # Bind click event
+        self.icon_label = ctk.CTkLabel(self, text="\U0001F319", font=("Arial", 18), cursor="hand2")
+        self.icon_label.place(relx=1.0, rely=0.05, anchor="ne")  # Position icon at the top-right
+        self.icon_label.bind("<Button-1>", self.toggle_mode)  # Bind click event to toggle mode
 
-
+# Clear all widgets except the theme toggle icon.
     def clear_frame(self):
+
         for widget in self.winfo_children():
             if widget != self.icon_label:  # Keep the icon_label
                 widget.destroy()
 
+# Create and display the login page.
     def login_page(self):
+
         self.clear_frame()
 
         # Login Frame
@@ -58,19 +62,22 @@ class App(ctk.CTk):
         ctk.CTkButton(login_frame, text="Login", command=self.login_action).pack(pady=10)
         ctk.CTkButton(login_frame, text="Register", command=self.register_page).pack(pady=10)
 
+# Toggle between light and dark modes.
     def toggle_mode(self, event):
+
         current_mode = ctk.get_appearance_mode()
         if current_mode == "Light":
             ctk.set_appearance_mode("Dark")
-            self.icon_label.configure(text="🌙")  # Change icon to sun for dark mode
+            self.icon_label.configure(text="\U0001F319")  # Change icon to moon for dark mode
         else:
             ctk.set_appearance_mode("Light")
-            self.icon_label.configure(text="🌞")  # Change icon to moon for light mode
+            self.icon_label.configure(text="\U0001F31E")  # Change icon to sun for light mode
 
+# Encrypt the given password using AES encryption.
     def encrypt_password(self, password):
-        # AES encryption setup
-        Pkey = os.urandom(32)  # Random 256-bit key
-        Piv = os.urandom(16)  # Random initialization vector
+
+        Pkey = os.urandom(32)  # Generate random 256-bit key
+        Piv = os.urandom(16)  # Generate random initialization vector
         cipher = Cipher(algorithms.AES(Pkey), modes.CBC(Piv), backend=default_backend())
         Pencryptor = cipher.encryptor()
 
@@ -84,7 +91,9 @@ class App(ctk.CTk):
 
         return (Pencrypted_data, Pkey_str, Piv_str)
 
+# Decrypt the given password using AES decryption.
     def decrypt_password(self, encrypted_password, Pkey_str, PIV_str):
+
         # Convert Pkey and PIV from base64 string back to bytes
         Pkey = base64.b64decode(Pkey_str)
         PIV = base64.b64decode(PIV_str)
@@ -95,7 +104,9 @@ class App(ctk.CTk):
         decrypted_data = decryptor.update(encrypted_password) + decryptor.finalize()
         return decrypted_data.rstrip(b"\0").decode('utf-8')  # Remove padding and decode to string
 
+# Create and display the registration page.
     def register_page(self):
+
         self.clear_frame()
 
         # Register Frame
@@ -134,20 +145,25 @@ class App(ctk.CTk):
         ctk.CTkButton(register_frame, text="Register", command=self.register_action).pack(pady=10)
         ctk.CTkButton(register_frame, text="Back", command=self.login_page).pack(pady=10)
 
+# Validate password with specific security criteria.
     def validate_password(self, password):
-        # Password validation pattern
+
         pattern = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%?&])[A-Za-z\d@$!%?&]{8,}$"
         return bool(re.match(pattern, password))
 
+# Validate phone number format (11 digits and starts with '01').
     def validate_phone_number(self, phone):
-        # Phone validation
+
         return phone.isdigit() and len(phone) == 11 and phone.startswith("01")
 
+# Validate email format (contains '@' and ends with '.com').
     def validate_email(self, email):
-        # Email validation
+
         return bool(re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com)$", email))
 
+# Handle registration logic and input validation.
     def register_action(self):
+
         first_name = self.first_name_entry.get().strip()
         last_name = self.last_name_entry.get().strip()
         username = self.username_entry.get().strip()
@@ -238,7 +254,9 @@ class App(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
+# Handle user login logic.
     def login_action(self):
+
         email_or_username = self.email_or_username_entry.get().strip()
         password = self.password_entry.get().strip()
 
@@ -263,7 +281,9 @@ class App(ctk.CTk):
         else:
             messagebox.showerror("Login Failed", "Email/Username not found!")
 
+# Display the main dashboard after login.
     def dashboard_page(self):
+
         self.clear_frame()
 
         # Dashboard Frame
@@ -281,51 +301,56 @@ class App(ctk.CTk):
         # Sign Out Button (added at the bottom right)
         ctk.CTkButton(dashboard_frame, text="Sign Out", command=self.login_page).pack(side="bottom", anchor="se", pady=10)
 
+# Handle photo upload and encryption.
     def upload_photo(self):
+
         file_path = filedialog.askopenfilename(
             title="Select a Photo",
             filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
         )
         if file_path:
-            # تشفير الصورة باستخدام AES
+            # Encrypt the photo using AES
             encrypted_image_data = self.encrypt_image(file_path)
 
-            # إدخال الصورة المشفرة إلى قاعدة البيانات
+            # Insert the encrypted photo into the database
             self.insert_encrypted_image_to_db(encrypted_image_data, file_path)
 
+# Encrypt the selected image using AES.
     def encrypt_image(self, image_path):
-        # فتح الصورة باستخدام PIL
+
         img = Image.open(image_path)
 
-        # تحويل الصورة إلى بايتات
+        # Convert the image to bytes
         buffered = BytesIO()
         img.save(buffered, format="PNG")
 
-        # تحويل البايتات إلى نص Base64 (اختياري لكن سأتركه فقط لإظهار كيفية تحويل الصورة)
+        # Convert bytes to Base64 (optional, kept for illustration)
         image_data = buffered.getvalue()
 
-        # إعداد AES للتشفير
-        Ekey = os.urandom(32)  # مفتاح عشوائي 256 بت
-        iv = os.urandom(16)  # قيمة ابتدائية عشوائية
+        # AES encryption setup
+        Ekey = os.urandom(32)  # Generate random 256-bit key
+        iv = os.urandom(16)  # Generate random initialization vector
         cipher = Cipher(algorithms.AES(Ekey), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
 
-        # تأكد من أن حجم البيانات يكون مضاعفاً لحجم البلوك
+        # Ensure data is padded to a multiple of block size
         padded_data = image_data + b"\0" * (16 - len(image_data) % 16)
 
         encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
 
         return (encrypted_data, Ekey, iv)
 
+# Insert encrypted image details into the database.
     def insert_encrypted_image_to_db(self, encrypted_image_data, image_path):
+
         encrypted_data, Ekey, iv = encrypted_image_data
 
-    # خصائص الصورة
+        # Get image properties
         file_size = os.path.getsize(image_path)
         file_extension = os.path.splitext(image_path)[1].lower()
         image_name = os.path.basename(image_path)
         category = "General"
-    #
+
         try:
             query = text('''
                 INSERT INTO Images (Size, Extention, Name, Category, EncryptedText, User_Id)
@@ -333,6 +358,7 @@ class App(ctk.CTk):
             ''')
 
             with engine.begin() as connection:
+                # Execute the query to insert the image details into the Images table
                 connection.execute(query, {
                     "size": file_size,
                     "ext": file_extension,
@@ -342,12 +368,13 @@ class App(ctk.CTk):
                     "user_id": self.user_id
                 })
 
+                # Retrieve the imgid (ID of the inserted image)
                 imgid_query = text('SELECT @@IDENTITY AS imgid')
                 result = connection.execute(imgid_query).fetchone()
                 imgid = result[0] if result else None
 
                 if imgid:
-                # إدخال imgid و Ekey و iv في جدول EncryptionDetails
+                    # Inserting imgid, Ekey, and iv into the EncryptionDetails table
                     insert_encryption_details_query = text('''
                         INSERT INTO EncryptionDetails (ImgID, Ekey, iv)
                         VALUES (:imgid, :ekey, :iv)
@@ -358,28 +385,37 @@ class App(ctk.CTk):
                         "iv": iv
                     })
                 else:
+                    # Raise an error if imgid was not retrieved after inserting the image
                     raise Exception("Failed to retrieve imgid after inserting image")
 
-        # عرض رسالة النجاح كـ pop-up
+        # Show success message as a pop-up
             messagebox.showinfo("Success", "Image Uploaded Successfully!")
         except Exception as e:
-        # عرض رسالة الخطأ كـ pop-up
+            # Show error message as a pop-up
             messagebox.showerror("Error", f"Error: {e}")
 
+# Decrypt the encrypted image data using AES.
     def decrypt_image(self, encrypted_data, ekey, iv):
-    # إعداد التشفير لفك البيانات
+
+        # Parameters:
+        # encrypted_data (bytes): The encrypted image data to be decrypted.
+        # ekey (bytes): The encryption key used for AES decryption.
+        # iv (bytes): The initialization vector used for AES decryption.
+
+        # Returns:
+        # bytes: The decrypted image data with padding removed.
+
         cipher = Cipher(algorithms.AES(ekey), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
 
-    # فك التشفير
         decrypted_data = decryptor.update(encrypted_data) + decryptor.finalize()
 
-    # إزالة البادئة إذا كانت مضافة
-        decrypted_data = decrypted_data.rstrip(b"\0")
+        # Remove padding if present
+        return decrypted_data.rstrip(b"\0")
 
-        return decrypted_data
-    
+# Delete an image from the database and update the UI.
     def delete_image(self, img_id, img_frame):
+
         try:
             delete_image_query = text('''
                 DELETE FROM Images WHERE ImgID = :img_id
@@ -389,52 +425,49 @@ class App(ctk.CTk):
                 with connection.begin() as transaction:
                     result = connection.execute(delete_image_query, {"img_id": img_id})
 
-                # تحقق من عدد الصفوف المتأثرة
+                    # Verify if the image was deleted
                     if result.rowcount == 0:
                         messagebox.showerror("Error", "Image not found")
                     else:
-                    # إزالة الصورة من الواجهة وإعادة تحميل البيانات
-                        img_frame.destroy()
-                    # ... (أضف هنا الكود الخاص بك لإعادة تحميل البيانات)
+                        if img_frame.winfo_exists():  # Ensure img_frame exists before calling destroy
+                            img_frame.destroy()  # Remove the image frame from the UI
                         messagebox.showinfo("Success", "Image deleted successfully!")
 
                     transaction.commit()
         except Exception as e:
-            print(f"Error occurred: {e}")
-        messagebox.showerror("Error", f"An error occurred: {e}")
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
-
-
+# Display the user's uploaded photos in a gallery format.
     def show_photos_page(self):
+
         self.clear_frame()
 
-    # إعداد إطار رئيسي يشمل الصور وزر Back والعنوان
+        # Create a container frame for photos and controls
         container = ctk.CTkFrame(self)
-        container.pack(fill="both", expand=True, padx=20, pady=20)  # توسيع الإطار لملء النافذة
+        container.pack(fill="both", expand=True, padx=20, pady=20)
 
-    # Canvas لإضافة التمرير
+        # Canvas for scrolling
         canvas = ctk.CTkCanvas(container, highlightthickness=0)
-        canvas.pack(side="left", fill='both', expand=True, padx=20, pady=20)  # توسيع canvas لملء الإطار
+        canvas.pack(side="left", fill='both', expand=True, padx=20, pady=20)
 
-    # Scrollbar عمودي
+        # Vertical scrollbar
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         scrollbar.pack(side="right", fill="y")
 
         photos_frame = ctk.CTkFrame(canvas)
         photos_frame.bind(
             "<Configure>",
+            # The '<Configure>' event is triggered whenever the size or layout of 'photos_frame' changes.
+            # This ensures that the canvas updates its scrollable region dynamically to match the content's dimensions.
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
         canvas.create_window((0, 0), window=photos_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.configure(yscrollcommand=scrollbar.set)  # Link the scrollbar to the canvas for scrolling functionality.
 
-    # عنوان الصفحة
-        title = ctk.CTkLabel(photos_frame, text="Photo Gallery", font=("Arial", 24))
-        title.grid(row=0, column=0, padx=20, pady=10)
+        ctk.CTkLabel(photos_frame, text="Photo Gallery", font=("Arial", 24)).grid(row=0, column=0, padx=20, pady=10)
 
         try:
-        # جلب الصور من قاعدة البيانات
             query = text('''
             SELECT i.ImgID, i.EncryptedText, i.Name, i.Size, i.Extention, ed.Ekey, ed.iv
             FROM Images i
@@ -450,54 +483,54 @@ class App(ctk.CTk):
                 ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page).grid(row=2, column=0, pady=10)
                 return
 
-        # تحديد عدد الأعمدة بناءً على عرض النافذة
             container_width = container.winfo_width()
-            image_width = 210  # عرض الصورة مع الهامش
-            columns = max(7, container_width // image_width)  # تحديد عدد الأعمدة بناءً على عرض الإطار
+            if container_width == 0:
+                container_width = 1  # Avoid division by zero
+            image_width = 210
+            columns = max(1, container_width // image_width)
 
             row = 1
             col = 0
-
             for result in results:
                 img_id, encrypted_text, img_name, img_size, img_extension, ekey, iv = result
 
-            # فك تشفير الصورة
+                # Decrypt the image
                 decrypted_image = self.decrypt_image(encrypted_text, ekey, iv)
 
-            # تحويل البيانات إلى صورة
+                # Convert the data to an image
                 image = Image.open(BytesIO(decrypted_image))
-                image.thumbnail((200, 200))  # ضبط حجم الصور
+                image.thumbnail((200, 200))  # Resize the image to 200x200
                 photo = ImageTk.PhotoImage(image)
 
-            # إطار خاص لكل صورة
+                # Create a frame for each image
                 img_frame = ctk.CTkFrame(photos_frame, width=200, height=250, corner_radius=10)
-                img_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")  # التأكد من توزيع المساحة بشكل صحيح
+                img_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")  # Ensure proper distribution of space
 
-            # عرض الصورة
+                # Display the image
                 label = ctk.CTkLabel(img_frame, image=photo, text="")
-                label.photo = photo  # الاحتفاظ بالمراجع
+                label.photo = photo  # Retain reference to the image
                 label.pack(pady=5)
 
-                # زر التحديث
+                # Refresh button
                 refresh_button = ctk.CTkButton(self, text="🔄 Refresh", command=self.show_photos_page)
-                refresh_button.place(relx=1.0, rely=1.0, anchor="se")  # موقع ثابت في أسفل اليمين
+                refresh_button.place(relx=1.0, rely=1.0, anchor="se")  # Fixed position at bottom-right corner
 
 
-            # زر التنزيل
+                # Download button
                 download_btn = ctk.CTkButton(
                     img_frame, text="⬇", width=50, 
                     command=lambda i=img_id: self.download_image(i)
                 )
                 download_btn.pack(side="left", padx=5)
 
-            # زر المعلومات
+                # Information button
                 info_btn = ctk.CTkButton(
                     img_frame, text="ℹ", width=50, 
                     command=lambda n=img_name, s=img_size, e=img_extension: self.show_image_info(n, s, e)
                 )
                 info_btn.pack(side="right", padx=5)
 
-            # زر الحذف
+                # Delete button
                 delete_btn = ctk.CTkButton(
                     img_frame, text="❌", width=50, 
                     command=lambda i=img_id, f=img_frame: self.delete_image(i, f)
@@ -505,28 +538,31 @@ class App(ctk.CTk):
                 delete_btn.pack(side="bottom", padx=5)
 
 
-            # تحديث الصفوف والأعمدة
+                # Update rows and columns
                 col += 1
                 if col >= columns:
-                    col = 0  # عندما نصل إلى 8 أعمدة، نبدأ صفًا جديدًا
-                    row += 1  # الانتقال إلى الصف التالي
+                    col = 0  # Start a new row when we reach 8 columns
+                    row += 1  # Move to the next row
 
-        # تحديد توزيع المساحة
+            # Ensure proper column distribution
             for i in range(columns):
-                photos_frame.grid_columnconfigure(i, weight=1)  # التأكد من توزيع الأعمدة بشكل متساوي
+                photos_frame.grid_columnconfigure(i, weight=1)  # Ensure equal column distribution
 
         except Exception as e:
+            # Error handling with a label showing the error message
             ctk.CTkLabel(photos_frame, text=f"Error: {e}", font=("Arial", 20), text_color="red").grid(row=1, column=0, pady=20)
 
-    # زر العودة إلى الصفحة الرئيسية
+        # Back button to return to the main dashboard page
         back_button = ctk.CTkButton(photos_frame, text="Back", command=self.dashboard_page)
         back_button.grid(row=row + 1, column=0, pady=10)
 
-    # التأكد من أن كل شيء متناسق مع التمرير
+        # Ensure everything fits correctly with scrolling
         container.update()
 
 
+# Decrypt and save an image to the local file system.
     def download_image(self, img_id):
+
         try:
             query = text('''
             SELECT i.EncryptedText, ed.Ekey, ed.iv
@@ -553,12 +589,11 @@ class App(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
+# Display information about an image.
     def show_image_info(self, name, size, extension):
+
         info_message = f"Name: {name}\nSize: {size} bytes\nExtension: {extension}"
         messagebox.showinfo("Image Information", info_message)
-
-    
-
 
 if __name__ == "__main__":
     app = App()
