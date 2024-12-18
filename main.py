@@ -11,7 +11,7 @@ from PIL import Image , ImageTk
 from io import BytesIO
 
 # Database connection setup
-engine = create_engine('mssql+pyodbc://AHMED-FATHY-LAP/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
+engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
 connection = engine.connect()
 
 # Set default appearance mode and theme for the application
@@ -487,7 +487,7 @@ class App(ctk.CTk):
             if container_width == 0:
                 container_width = 1  # Avoid division by zero
             image_width = 210
-            columns = max(1, container_width // image_width)
+            columns = max(7, container_width // image_width)
 
             row = 1
             col = 0
