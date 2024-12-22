@@ -55,7 +55,7 @@ pip install pillow
   5. Change the server name
   in [line 13] replace [IIZEEX] with your local server name -----> (Windows  authentication)
 
-  5. Run the application:
+  6. Run the application:
   ```bash
 python main.py
   ```
