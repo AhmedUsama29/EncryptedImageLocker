@@ -13,10 +13,10 @@ import pyodbc as odbc
 
 # Database connection setup
 
-# server_name = "mariem.database.windows.net"
-# database_name = "ImageEncryption"
-# username = "mariem"
-# password = "M20122004#"
+server_name = os.getenv("server_name")
+database_name = os.getenv("database_name")
+username = os.getenv("username")
+password = os.getenv("password")
 
 # Construct the connection string
 connection_string = (
