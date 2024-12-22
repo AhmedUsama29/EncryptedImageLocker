@@ -34,15 +34,16 @@ Encrypted Image Locker is a Python-based application that integrates **image enc
 - **Integration of Features:** Merging image encryption and password management into a cohesive tool was challenging. We tackled this by dividing the work into smaller tasks and testing each module thoroughly.  
 - **Learning New Libraries:** Adapting to libraries like Cryptography and Pillow required extra effort. Online tutorials and documentation were vital resources for overcoming this hurdle.  
 ## **Setup Instructions**
-  1. Clone the repository:  
+  1. Restore the database
+  2. Clone the repository:  
 ```bash
 git Clone https://github.com/AhmedUsama29/EncryptedImageLocker.git
 ```
-  2. Navigate to the project folder:
+  3. Navigate to the project folder:
   ```bash
 cd EncryptedImageLocker
   ```
-  3. Install required Libraries
+  4. Install required Libraries
   ```bash
 pip install cryptography
 pip install customtkinter
@@ -50,7 +51,11 @@ pip install SQLAlchemy
 pip install pyodbc
 pip install pillow
   ```
-  4. Run the application:
+  
+  5. Change the server name
+  in [line 13] replace [IIZEEX] with your local server name -----> (Windows  authentication)
+
+  5. Run the application:
   ```bash
 python main.py
   ```
