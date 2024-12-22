@@ -7,8 +7,8 @@ CREATE TABLE Users (
     Email VARCHAR(100) UNIQUE NOT NULL,    
     Password varbinary(255) NOT NULL,        
     PhoneNum VARCHAR(20),                  
-    Gender varchar(6) CHECK (Gender IN ('Male', 'Female') 
-)
+    Gender varchar(6) CHECK (Gender IN ('Male', 'Female') )
+);
 CREATE TABLE PasswordEncryption (
     id INT PRIMARY KEY IDENTITY(1,1),      
     user_id INT NOT NULL,                  
@@ -20,7 +20,7 @@ CREATE TABLE PasswordEncryption (
 CREATE TABLE Images (
     ImgID INT PRIMARY KEY IDENTITY(1,1),  
     Size varchar(20) NOT NULL,                    
-    Extension VARCHAR(10) NOT NULL,       
+    Extention VARCHAR(10) NOT NULL,       
     Name VARCHAR(40) NOT NULL,           
     Category VARCHAR(40),                 
     EncryptedText varbinary(MAX),                   
