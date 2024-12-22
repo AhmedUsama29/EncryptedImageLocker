@@ -8,19 +8,25 @@ import customtkinter as ctk
 from sqlalchemy import create_engine, text
 from PIL import Image , ImageTk
 from io import BytesIO
-import pyodbc as odbc
-# import pandas as pd
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+server_name = os.getenv("SERVER_NAME")
+database_name = os.getenv("DATABASE_NAME")
+DBusername = os.getenv("DBUSERNAME")
+password = os.getenv("PASSWORD")
 
 # Database connection setup
-
-server_name = os.getenv("server_name")
-database_name = os.getenv("database_name")
-username = os.getenv("username")
-password = os.getenv("password")
+# server_name = "mariem.database.windows.net"
+# database_name = "ImageEncryption"
+# username = "mariem"
+# password = "M20122004#"
 
 # Construct the connection string
 connection_string = (
-    f"mssql+pyodbc://{username}:{password}@{server_name}:1433/"
+    f"mssql+pyodbc://{DBusername}:{password}@{server_name}:1433/"
     f"{database_name}?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes"
 )
 
