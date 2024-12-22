@@ -6,7 +6,6 @@ from cryptography.hazmat.backends import default_backend
 from tkinter import filedialog, messagebox, ttk
 import customtkinter as ctk
 from sqlalchemy import create_engine, text
-import pyodbc
 from PIL import Image , ImageTk
 from io import BytesIO
 
