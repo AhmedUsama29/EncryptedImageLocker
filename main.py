@@ -18,12 +18,6 @@ database_name = os.getenv("DATABASE_NAME")
 DBusername = os.getenv("DBUSERNAME")
 password = os.getenv("PASSWORD")
 
-# Database connection setup
-# server_name = "mariem.database.windows.net"
-# database_name = "ImageEncryption"
-# username = "mariem"
-# password = "M20122004#"
-
 # Construct the connection string
 connection_string = (
     f"mssql+pyodbc://{DBusername}:{password}@{server_name}:1433/"
