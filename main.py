@@ -6,13 +6,31 @@ from cryptography.hazmat.backends import default_backend
 from tkinter import filedialog, messagebox, ttk
 import customtkinter as ctk
 from sqlalchemy import create_engine, text
-import pyodbc
 from PIL import Image , ImageTk
 from io import BytesIO
+import pyodbc as odbc
+# import pandas as pd
 
 # Database connection setup
-engine = create_engine('mssql+pyodbc://IIZEEX/ImageEncrytion?driver=ODBC+Driver+17+for+SQL+Server')
+
+# server_name = "mariem.database.windows.net"
+# database_name = "ImageEncryption"
+# username = "mariem"
+# password = "M20122004#"
+
+# Construct the connection string
+connection_string = (
+    f"mssql+pyodbc://{username}:{password}@{server_name}:1433/"
+    f"{database_name}?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes"
+)
+
+# Create the SQLAlchemy engine
+engine = create_engine(connection_string)
+
+# Establish a connection
 connection = engine.connect()
+
+
 
 # Set default appearance mode and theme for the application
 ctk.set_appearance_mode("Dark")  # Appearance options
